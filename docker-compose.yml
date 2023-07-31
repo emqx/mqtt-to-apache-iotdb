@@ -1,0 +1,42 @@
+version: '3.8'
+services:
+  emqx-enterprise:
+    image: emqx/emqx-enterprise:5.1.1
+    container_name: emqx
+    healthcheck:
+      test: [ "CMD", "emqx", "ping" ]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    ports:
+      - 1883:1883
+      - 18083:18083
+    volumes:
+      - $PWD/emqx:/opt/emqx/data/configs
+    depends_on:
+      iotdb:
+        condition: service_started
+
+  iotdb:
+    image: apache/iotdb:1.1.2-standalone
+    container_name: iotdb
+    ports:
+      - 18080:18080
+    environment:
+      - enable_rest_service=true
+
+  mqttx-simulate:
+    image: emqx/mqttx-cli:v1.9.3
+    container_name: mqttx-simulate
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mqttx simulate -sc IEM -c 1 -I emqx_iem_simulate -h emqx-enterprise
+    depends_on:
+      emqx-enterprise:
+        condition: service_healthy
+
+networks:
+  emqx-net:
+    name: emqx-net
